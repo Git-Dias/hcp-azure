@@ -5,12 +5,17 @@ on:
     branches:
       - main
 
+# 🧩 Controle de concorrência
+# Garante que apenas um job Terraform por workspace execute de cada vez
+concurrency:
+  group: terraform-${{ env.TF_WORKSPACE }}
+  cancel-in-progress: false
+
 env:
   TF_CLOUD_ORGANIZATION: "DiazTech"
   TF_API_TOKEN: "${{ secrets.TF_API_TOKEN }}"
   TF_WORKSPACE: "hcp-azure"
   CONFIG_DIRECTORY: "./"
-
 
 jobs:
   terraform:
