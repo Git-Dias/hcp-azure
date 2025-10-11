@@ -1,7 +1,7 @@
 variable "rg_name" {
   description = "Nome do Resource Group"
   type        = string
-  default     = "RG-HCP-Terraform"
+  default     = "RG-HCP-Azure"
 }
 
 variable "location" {
