@@ -1,0 +1,5 @@
+locals {
+  tags = {
+    SOURCE = "TERRAFORM"
+  }
+}
