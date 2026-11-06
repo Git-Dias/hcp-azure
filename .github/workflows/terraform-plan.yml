@@ -2,6 +2,8 @@ name: "Terraform Plan"
 
 on:
   pull_request:
+    branches:
+      - homol
 
 env:
   TF_CLOUD_ORGANIZATION: "DiazTech"
