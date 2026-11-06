@@ -3,6 +3,11 @@ resource "azurerm_resource_group" "hcp_tf_lab" {
   location = var.location
 }
 
+resource "azurerm_resource_group" "hcp_tf_lab_02" {
+  name     = var.rg_name_02
+  location = var.location
+}
+
 resource "azurerm_virtual_network" "lab_vnet" {
   name                = "vnet-lab"
   address_space       = ["10.0.0.0/16"]
