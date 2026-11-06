@@ -4,7 +4,7 @@ resource "azurerm_resource_group" "hcp_tf_lab" {
 }
 
 resource "azurerm_resource_group" "hcp_tf_lab_02" {
-  name     = var.rg_name_02
+  name     = var.rg_name_03
   location = var.location
 }
 
