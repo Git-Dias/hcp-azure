@@ -10,7 +10,7 @@ terraform {
 
   required_providers {
     azurerm = {
-      source = "hashicorp/azurerm"
+      source  = "hashicorp/azurerm"
       version = "5.13.0"
     }
   }
@@ -19,6 +19,9 @@ terraform {
 provider "azurerm" {
   resource_providers_to_register = [
     "Microsoft.Storage",
+    "Microsoft.Network",
+    "Microsoft.ManagedIdentity",
+    "Microsoft.BotService",
   ]
 
   features {}
