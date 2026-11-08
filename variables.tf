@@ -33,19 +33,19 @@ variable "enable_storage" {
 variable "enable_bot" {
   description = "Azure Bot Service + identidade gerenciada"
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "enable_keyvault" {
   description = "Key Vault"
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "enable_keyvault_objects" {
   description = "Key e secret dentro do Key Vault"
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "enable_vm" {
