@@ -49,7 +49,7 @@ resource "azurerm_network_interface" "lab_nic" {
 # --- Storage ---------------------------------------------------------------
 
 resource "azurerm_storage_account" "lab_storage" {
-  name                     = "sthcptflab01"
+  name                     = "sthcptflab001"
   resource_group_name      = azurerm_resource_group.hcp_tf_lab.name
   location                 = azurerm_resource_group.hcp_tf_lab.location
   account_tier             = "Standard"
