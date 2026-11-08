@@ -97,9 +97,9 @@ module "vm_linux" {
   subnet_id           = one(module.network[*].subnet_id)
   size                = var.vm_size
 
-  disable_password_authentication = true              # FAIL: false          -> "Linux Virtual Machine password authentication should be disabled"
-  secure_boot_enabled             = true              # FAIL: false          -> "Virtual Machine Secure Boot should be enabled"
-  vtpm_enabled                    = true              # FAIL: false          -> "Virtual Machine vTPM should be enabled"
+  disable_password_authentication = false             # FAIL: false          -> "Linux Virtual Machine password authentication should be disabled"
+  secure_boot_enabled             = false              # FAIL: false          -> "Virtual Machine Secure Boot should be enabled"
+  vtpm_enabled                    = false              # FAIL: false          -> "Virtual Machine vTPM should be enabled"
   os_disk_storage_account_type    = "StandardSSD_LRS" # FAIL: "Standard_LRS" -> "Virtual Machine should be using Standard SSD disk volumes"
 }
 
