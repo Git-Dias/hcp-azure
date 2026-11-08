@@ -129,7 +129,7 @@ resource "azurerm_key_vault" "lab_kv" {
 
   # VIOLA (parcial): "Key Vault soft delete should be enabled"
   # Se a policy exigir retenção >= 90 dias, isto gera a não conformidade.
-  soft_delete_retention_days = 12
+  soft_delete_retention_days = 9
 
   network_acls {
     default_action = "Allow"
