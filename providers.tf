@@ -17,6 +17,10 @@ terraform {
       source  = "hashicorp/random"
       version = "3.7.2"
     }
+    tls = {
+      source  = "hashicorp/tls"
+      version = "4.4.2"
+    }
   }
 }
 
@@ -29,6 +33,9 @@ provider "azurerm" {
     "Microsoft.Compute",
     "Microsoft.KeyVault",
   ]
+
+  # Necessário com shared_access_key_enabled = false no Storage (data plane via Entra ID)
+  storage_use_azuread = true
 
   features {}
 }

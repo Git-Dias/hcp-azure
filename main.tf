@@ -1,254 +1,119 @@
+# ---------------------------------------------------------------------------
+# LAB DE TESTES DE CSPM/IaC
+# - Liga/desliga módulos em lab.auto.tfvars (enable_*).
+# - Por padrão TUDO está em conformidade (cenário PASS).
+# - Para gerar o FAIL, troque o valor indicado no comentário "FAIL:" da linha.
+# Não reutilize esta configuração em ambientes reais.
+# ---------------------------------------------------------------------------
+
+data "azurerm_client_config" "current" {}
+
 resource "azurerm_resource_group" "hcp_tf_lab" {
   name     = var.rg_name
   location = var.location
 }
 
-# ---------------------------------------------------------------------------
-# LAB DE TESTES DE CSPM/IaC: os recursos abaixo violam regras de propósito.
-# Não reutilize esta configuração em ambientes reais.
-# ---------------------------------------------------------------------------
-
 # --- Rede ------------------------------------------------------------------
 
-resource "azurerm_virtual_network" "lab_vnet" {
-  name                = "vnet-tf-lab"
-  address_space       = ["10.0.0.0/16"]
-  location            = azurerm_resource_group.hcp_tf_lab.location
+module "network" {
+  count  = var.enable_network ? 1 : 0
+  source = "./modules/network"
+
   resource_group_name = azurerm_resource_group.hcp_tf_lab.name
-}
-
-resource "azurerm_subnet" "lab_subnet" {
-  name                 = "snet-tf-lab"
-  resource_group_name  = azurerm_resource_group.hcp_tf_lab.name
-  virtual_network_name = azurerm_virtual_network.lab_vnet.name
-  address_prefixes     = ["10.0.1.0/24"]
-}
-
-resource "azurerm_public_ip" "lab_pip" {
-  name                = "pip-tf-lab"
   location            = azurerm_resource_group.hcp_tf_lab.location
-  resource_group_name = azurerm_resource_group.hcp_tf_lab.name
-  allocation_method   = "Static"
-  sku                 = "Standard"
-}
 
-# VIOLA: "Network Interface should not have public IP addresses"
-resource "azurerm_network_interface" "lab_nic" {
-  name                = "nic-tf-lab"
-  location            = azurerm_resource_group.hcp_tf_lab.location
-  resource_group_name = azurerm_resource_group.hcp_tf_lab.name
-
-  # VIOLA: "Network Interface IP forwarding should be disabled"
-  ip_forwarding_enabled = true
-
-  ip_configuration {
-    name                          = "ipconfig1"
-    subnet_id                     = azurerm_subnet.lab_subnet.id
-    private_ip_address_allocation = "Dynamic"
-    public_ip_address_id          = azurerm_public_ip.lab_pip.id
-  }
+  create_test_nic           = true
+  nic_public_ip_enabled     = false # FAIL: true  -> "Network Interface should not have public IP addresses"
+  nic_ip_forwarding_enabled = false # FAIL: true  -> "Network Interface IP forwarding should be disabled"
 }
 
 # --- Storage ---------------------------------------------------------------
 
-resource "azurerm_storage_account" "lab_storage" {
-  name                     = "sthcptflab001"
-  resource_group_name      = azurerm_resource_group.hcp_tf_lab.name
-  location                 = azurerm_resource_group.hcp_tf_lab.location
-  account_tier             = "Standard"
-  account_replication_type = "LRS"
+module "storage" {
+  count  = var.enable_storage ? 1 : 0
+  source = "./modules/storage"
 
-  # VIOLA: "Storage Account public network access should be disabled"
-  public_network_access = "Enabled"
+  resource_group_name = azurerm_resource_group.hcp_tf_lab.name
+  location            = azurerm_resource_group.hcp_tf_lab.location
+  name                = "sthcptflab001"
 
-  # Permite que containers sejam públicos (pré-requisito para o container abaixo)
-  allow_nested_items_to_be_public = true
-
-  # VIOLA: "Storage Account should prevent shared key access"
-  shared_access_key_enabled = true
-
-  # VIOLA: "Storage Account 'Secure transfer required' should be enabled"
-  https_traffic_only_enabled = false
-
-  # VIOLA: "Storage Account's network rules should not allow public access"
-  network_rules {
-    default_action = "Allow"
-  }
-}
-
-# VIOLA: "Storage Account container should not allow public access"
-resource "azurerm_storage_container" "lab_public_container" {
-  name                  = "public-lab"
-  storage_account_id    = azurerm_storage_account.lab_storage.id
-  container_access_type = "blob"
+  public_network_access_enabled   = false     # FAIL: true      -> "Storage Account public network access should be disabled"
+  shared_access_key_enabled       = false     # FAIL: true      -> "Storage Account should prevent shared key access"
+  https_traffic_only_enabled      = true      # FAIL: false     -> "Storage Account 'Secure transfer required' should be enabled"
+  min_tls_version                 = "TLS1_2"  # FAIL: "TLS1_0"  -> "Storage Account should use minimum TLS 1.2"
+  network_default_action          = "Deny"    # FAIL: "Allow"   -> "Storage Account's network rules should not allow public access"
+  allow_nested_items_to_be_public = false     # FAIL: true      -> pré-requisito do container público abaixo
+  container_access_type           = "private" # FAIL: "blob"    -> "Storage Account container should not allow public access" (exige a linha acima = true)
 }
 
 # --- Bot Service -----------------------------------------------------------
 
-# Identidade gerenciada usada como app do bot (evita criar App Registration no Entra ID)
-resource "azurerm_user_assigned_identity" "lab_bot_identity" {
-  name                = "id-bot-tf-lab"
+module "bot" {
+  count  = var.enable_bot ? 1 : 0
+  source = "./modules/bot"
+
+  resource_group_name = azurerm_resource_group.hcp_tf_lab.name
   location            = azurerm_resource_group.hcp_tf_lab.location
-  resource_group_name = azurerm_resource_group.hcp_tf_lab.name
-}
+  tenant_id           = data.azurerm_client_config.current.tenant_id
 
-data "azurerm_client_config" "current" {}
-
-# VIOLA: "Bot Service public network access should be disabled"
-resource "azurerm_bot_service_azure_bot" "lab_bot" {
-  name                = "bot-tf-lab-01"
-  resource_group_name = azurerm_resource_group.hcp_tf_lab.name
-  location            = "global"
-  sku                 = "F0"
-
-  microsoft_app_type      = "UserAssignedMSI"
-  microsoft_app_id        = azurerm_user_assigned_identity.lab_bot_identity.client_id
-  microsoft_app_msi_id    = azurerm_user_assigned_identity.lab_bot_identity.id
-  microsoft_app_tenant_id = data.azurerm_client_config.current.tenant_id
-
-  public_network_access_enabled = true
+  public_network_access_enabled = false # FAIL: true -> "Bot Service public network access should be disabled"
 }
 
 # --- Key Vault -------------------------------------------------------------
 
-resource "azurerm_key_vault" "lab_kv" {
-  name                = "kv-hcp-tf-lab-001"
-  location            = azurerm_resource_group.hcp_tf_lab.location
+module "keyvault" {
+  count  = var.enable_keyvault ? 1 : 0
+  source = "./modules/keyvault"
+
   resource_group_name = azurerm_resource_group.hcp_tf_lab.name
+  location            = azurerm_resource_group.hcp_tf_lab.location
   tenant_id           = data.azurerm_client_config.current.tenant_id
-  sku_name            = "standard"
+  deployer_object_id  = data.azurerm_client_config.current.object_id
+  # Com purge protection, um KV destruído "segura" o nome pelos dias de retenção: troque o nome se precisar recriar.
+  name = "kv-hcp-tf-lab-001"
 
-  # Access policies (em vez de RBAC) para o próprio deployer criar key/secret sem role assignment
-  rbac_authorization_enabled = false
+  # Key e secret são criados pelo data plane: com o KV fechado (padrão), o apply a partir
+  # do runner do HCP falha. Para um apply real: desligue-os aqui ou use um agent com acesso privado.
+  create_key    = var.enable_keyvault_objects
+  create_secret = var.enable_keyvault_objects
 
-  # VIOLA: "Key Vault public network access should be disabled"
-  public_network_access_enabled = true
+  public_network_access_enabled = false  # FAIL: true    -> "Key Vault public network access should be disabled"
+  network_default_action        = "Deny" # FAIL: "Allow" -> "Key Vault firewall should be enabled"
+  purge_protection_enabled      = true   # FAIL: false   -> "Key Vault purge protection should be enabled" (true -> false recria o KV)
+  soft_delete_retention_days    = 90     # FAIL: 7       -> "Key Vault soft delete retention" (Azure aceita só 7 a 90)
 
-  # VIOLA: "Key Vault purge protection should be enabled"
-  purge_protection_enabled = false
-
-  # VIOLA (parcial): "Key Vault soft delete should be enabled"
-  # Se a policy exigir retenção >= 120 dias, isto gera a não conformidade.
-  soft_delete_retention_days = 7
-
-  network_acls {
-    default_action = "Allow"
-    bypass         = "AzureServices"
-  }
-
-  access_policy {
-    tenant_id          = data.azurerm_client_config.current.tenant_id
-    object_id          = data.azurerm_client_config.current.object_id
-    key_permissions    = ["Get", "List", "Create", "Delete", "Purge", "Recover", "GetRotationPolicy"]
-    secret_permissions = ["Get", "List", "Set", "Delete", "Purge", "Recover"]
-  }
-}
-
-# VIOLA: "Key Vault key should have an expiration date" (sem expiration_date)
-resource "azurerm_key_vault_key" "lab_key" {
-  name         = "key-tf-lab"
-  key_vault_id = azurerm_key_vault.lab_kv.id
-  key_type     = "RSA"
-  key_size     = 2048
-  key_opts     = ["encrypt", "decrypt", "sign", "verify", "wrapKey", "unwrapKey"]
-}
-
-# VIOLA: "Key Vault secret should have an expiration date" (sem expiration_date)
-resource "azurerm_key_vault_secret" "lab_secret" {
-  name         = "secret-tf-lab"
-  key_vault_id = azurerm_key_vault.lab_kv.id
-  value        = "lab-not-a-real-secret"
+  key_expiration_date    = var.keyvault_object_expiration_date # FAIL: null -> "Key Vault key should have an expiration date"
+  secret_expiration_date = var.keyvault_object_expiration_date # FAIL: null -> "Key Vault secret should have an expiration date"
 }
 
 # --- Compute ---------------------------------------------------------------
 
-resource "random_password" "lab_vm_admin" {
-  length           = 20
-  special          = true
-  override_special = "!#%*-_=+"
-  min_upper        = 2
-  min_lower        = 2
-  min_numeric      = 2
-  min_special      = 2
-}
+module "vm_linux" {
+  count  = var.enable_vm ? 1 : 0
+  source = "./modules/vm_linux"
 
-# NIC privada dedicada à VM (sem IP público)
-resource "azurerm_network_interface" "lab_vm_nic" {
-  name                = "nic-vm-tf-lab"
-  location            = azurerm_resource_group.hcp_tf_lab.location
   resource_group_name = azurerm_resource_group.hcp_tf_lab.name
-
-  ip_configuration {
-    name                          = "ipconfig1"
-    subnet_id                     = azurerm_subnet.lab_subnet.id
-    private_ip_address_allocation = "Dynamic"
-  }
-}
-
-resource "azurerm_linux_virtual_machine" "lab_vm" {
-  name                  = "vm-tf-lab-01"
-  location              = azurerm_resource_group.hcp_tf_lab.location
-  resource_group_name   = azurerm_resource_group.hcp_tf_lab.name
-  size                  = var.vm_size
-  network_interface_ids = [azurerm_network_interface.lab_vm_nic.id]
-
-  admin_username                  = "labadmin"
-  admin_password                  = random_password.lab_vm_admin.result
-  disable_password_authentication = false
-
-  # VIOLA: "Virtual Machine Secure Boot should be enabled"
-  secure_boot_enabled = false
-
-  # VIOLA: "Virtual Machine vTPM should be enabled"
-  vtpm_enabled = false
-
-  os_disk {
-    caching = "ReadWrite"
-    # VIOLA: "Virtual Machine should be using Standard SSD disk volumes" (HDD Standard)
-    storage_account_type = "Standard_LRS"
-  }
-
-  source_image_reference {
-    publisher = "Canonical"
-    offer     = "0001-com-ubuntu-server-jammy"
-    sku       = "22_04-lts-gen2"
-    version   = "latest"
-  }
-}
-
-resource "azurerm_linux_virtual_machine_scale_set" "lab_vmss" {
-  name                = "vmss-tf-lab"
   location            = azurerm_resource_group.hcp_tf_lab.location
+  subnet_id           = one(module.network[*].subnet_id)
+  size                = var.vm_size
+
+  disable_password_authentication = true              # FAIL: false          -> "Linux Virtual Machine password authentication should be disabled"
+  secure_boot_enabled             = true              # FAIL: false          -> "Virtual Machine Secure Boot should be enabled"
+  vtpm_enabled                    = true              # FAIL: false          -> "Virtual Machine vTPM should be enabled"
+  os_disk_storage_account_type    = "StandardSSD_LRS" # FAIL: "Standard_LRS" -> "Virtual Machine should be using Standard SSD disk volumes"
+}
+
+module "vmss_linux" {
+  count  = var.enable_vmss ? 1 : 0
+  source = "./modules/vmss_linux"
+
   resource_group_name = azurerm_resource_group.hcp_tf_lab.name
+  location            = azurerm_resource_group.hcp_tf_lab.location
+  subnet_id           = one(module.network[*].subnet_id)
   sku                 = var.vm_size
-  instances           = 1
 
-  admin_username = "labadmin"
-  admin_password = random_password.lab_vm_admin.result
-
-  # VIOLA: "Linux Virtual Machine password authentication should be disabled"
-  disable_password_authentication = false
-
-  os_disk {
-    caching              = "ReadWrite"
-    storage_account_type = "Standard_LRS"
-  }
-
-  source_image_reference {
-    publisher = "Canonical"
-    offer     = "0001-com-ubuntu-server-jammy"
-    sku       = "22_04-lts-gen2"
-    version   = "latest"
-  }
-
-  network_interface {
-    name    = "nic-vmss-tf-lab"
-    primary = true
-
-    ip_configuration {
-      name      = "ipconfig1"
-      primary   = true
-      subnet_id = azurerm_subnet.lab_subnet.id
-    }
-  }
+  disable_password_authentication = true              # FAIL: false          -> "Linux Virtual Machine password authentication should be disabled"
+  secure_boot_enabled             = true              # FAIL: false          -> "Virtual Machine Secure Boot should be enabled"
+  vtpm_enabled                    = true              # FAIL: false          -> "Virtual Machine vTPM should be enabled"
+  os_disk_storage_account_type    = "StandardSSD_LRS" # FAIL: "Standard_LRS" -> "Virtual Machine should be using Standard SSD disk volumes"
 }
