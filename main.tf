@@ -128,7 +128,6 @@ resource "azurerm_key_vault" "lab_kv" {
   purge_protection_enabled = false
 
   # VIOLA (parcial): "Key Vault soft delete should be enabled"
-  # O Azure não permite mais desabilitar o soft delete; usamos a retenção mínima (7 dias).
   # Se a policy exigir retenção >= 90 dias, isto gera a não conformidade.
   soft_delete_retention_days = 7
 
