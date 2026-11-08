@@ -13,6 +13,10 @@ terraform {
       source  = "hashicorp/azurerm"
       version = "5.13.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "3.7.2"
+    }
   }
 }
 
@@ -22,6 +26,8 @@ provider "azurerm" {
     "Microsoft.Network",
     "Microsoft.ManagedIdentity",
     "Microsoft.BotService",
+    "Microsoft.Compute",
+    "Microsoft.KeyVault",
   ]
 
   features {}
