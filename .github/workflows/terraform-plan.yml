@@ -26,7 +26,37 @@ jobs:
     permissions:
       contents: read        # checkout
       pull-requests: write  # comentário com o resultado do plan
+      checks: read          # ler o resultado do check "Wiz IaC Scanner"
     steps:
+      # GATE 1: o scan do Wiz é um check do GitHub App (não um job deste workflow), então não dá para usar "needs".
+      # Este step espera o check terminar no SHA do PR e só deixa o plan rodar se concluir com "success".
+      - name: Wait for Wiz IaC Scanner (gate before plan)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+          CHECK_NAME: "Wiz IaC Scanner"
+        run: |
+          set -euo pipefail
+          deadline=$((SECONDS + 600))
+          while true; do
+            read -r status conclusion < <(
+              gh api "repos/${REPO}/commits/${SHA}/check-runs?per_page=100" \
+                --jq "[.check_runs[] | select(.name == \"${CHECK_NAME}\")] | sort_by(.started_at) | last | \"\(.status // \"none\") \(.conclusion // \"none\")\""
+            )
+            echo "${CHECK_NAME}: status=${status} conclusion=${conclusion}"
+            if [ "${status}" = "completed" ]; then
+              if [ "${conclusion}" = "success" ]; then
+                echo "Wiz aprovou. Seguindo para o plan."
+                exit 0
+              fi
+              echo "::error::${CHECK_NAME} terminou com '${conclusion}'. Plan NÃO executado. Corrija os findings do Wiz e faça novo push."
+              exit 1
+            fi
+            [ "${SECONDS}" -lt "${deadline}" ] || { echo "::error::Timeout esperando ${CHECK_NAME}. Plan NÃO executado (fail closed)."; exit 1; }
+            sleep 10
+          done
+
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

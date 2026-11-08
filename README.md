@@ -13,3 +13,11 @@ Changes move through three branches, and Terraform only runs at the last two:
 | 3. Deploy | Merge into `main` | Runs a new plan and, if it succeeds, applies it |
 
 Merging into `homol` and opening a pull request into `main` don't start any runs.
+
+## Lab layout
+
+Each service lives in its own module under `modules/` (`network`, `storage`, `bot`, `keyvault`, `vm_linux`, `vmss_linux`).
+
+- **What gets provisioned:** turn modules on or off with the `enable_*` flags in `lab.auto.tfvars`. The VM and the VMSS need `enable_network = true`.
+- **Pass or fail:** by default every resource is compliant. To make one fail a rule, change the value shown in the `# FAIL:` comment next to that line in `main.tf`.
+- **Existing state:** `moved.tf` maps the old root resources to their new module addresses, so the refactor doesn't recreate them.
