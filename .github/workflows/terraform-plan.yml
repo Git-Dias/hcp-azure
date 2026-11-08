@@ -1,5 +1,7 @@
 name: "Terraform Plan"
 
+# PR -> homol: plan especulativo no HCP Terraform (post-plan: Wiz run task MANDATORY).
+# O job só fica verde se o run terminar em "planned_and_finished" E nenhum task stage falhar.
 on:
   pull_request:
     branches:
@@ -18,12 +20,11 @@ env:
 
 jobs:
   terraform:
-    if: github.repository != 'hashicorp-education/learn-terraform-github-actions'
-    name: "Terraform Plan"
+    name: "Terraform Plan"          # <- este é o nome do check que vai no ruleset (required status check)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
-      contents: read        # checkout do repositório
+      contents: read        # checkout
       pull-requests: write  # comentário com o resultado do plan
     steps:
       - name: Checkout
@@ -58,9 +59,7 @@ jobs:
 
       - name: Update PR
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        id: plan-comment
         env:
-          # Valores passados via env (e não interpolados no script) para evitar script injection
           PLAN_ADD: ${{ steps.plan-output.outputs.add }}
           PLAN_CHANGE: ${{ steps.plan-output.outputs.change }}
           PLAN_DESTROY: ${{ steps.plan-output.outputs.destroy }}
@@ -69,22 +68,21 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const { PLAN_ADD, PLAN_CHANGE, PLAN_DESTROY, RUN_LINK } = process.env;
-            // 1. Retrieve existing bot comments for the PR
+            const marker = 'Terraform Cloud Plan Output';
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
             });
-            const botComment = comments.find(comment => {
-              return comment.user.type === 'Bot' && comment.body.includes('Terraform Cloud Plan Output')
-            });
-            const output = `#### Terraform Cloud Plan Output
-               \`\`\`
-               Plan: ${PLAN_ADD} to add, ${PLAN_CHANGE} to change, ${PLAN_DESTROY} to destroy.
-               \`\`\`
-               [Terraform Cloud Plan](${RUN_LINK})
-               `;
-            // 2. Delete previous comment so PR timeline makes sense
+            const botComment = comments.find(c => c.user.type === 'Bot' && c.body.includes(marker));
+            // join('\n') evita a indentação que transformava o comentário em bloco de código
+            const output = [
+              `#### ${marker}`,
+              '```',
+              `Plan: ${PLAN_ADD} to add, ${PLAN_CHANGE} to change, ${PLAN_DESTROY} to destroy.`,
+              '```',
+              `[Terraform Cloud Plan](${RUN_LINK})`,
+            ].join('\n');
             if (botComment) {
               await github.rest.issues.deleteComment({
                 owner: context.repo.owner,
@@ -92,10 +90,43 @@ jobs:
                 comment_id: botComment.id,
               });
             }
-            // 3. Create the new comment
             await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: output
+              body: output,
             });
+
+      # GATE: faz o resultado do HCP Terraform (incluindo a Wiz run task mandatory) refletir no check do GitHub.
+      - name: Enforce HCP Terraform gate (Wiz run task)
+        if: always() && steps.plan-run.outputs.run_id != ''
+        env:
+          TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
+          RUN_ID: ${{ steps.plan-run.outputs.run_id }}
+          RUN_LINK: ${{ steps.plan-run.outputs.run_link }}
+        run: |
+          set -euo pipefail
+          API="https://app.terraform.io/api/v2"
+          auth=(-H "Authorization: Bearer ${TF_API_TOKEN}" -H "Content-Type: application/vnd.api+json")
+
+          deadline=$((SECONDS + 1200))
+          while true; do
+            status=$(curl -fsS "${auth[@]}" "${API}/runs/${RUN_ID}" | jq -r '.data.attributes.status')
+            echo "Run ${RUN_ID}: ${status}"
+            case "${status}" in
+              planned_and_finished|errored|canceled|discarded|force_canceled) break ;;
+            esac
+            [ "${SECONDS}" -lt "${deadline}" ] || { echo "::error::Timeout aguardando o run"; exit 1; }
+            sleep 10
+          done
+
+          stages=$(curl -fsS "${auth[@]}" "${API}/runs/${RUN_ID}/task-stages")
+          echo "--- Task stages ---"
+          echo "${stages}" | jq -r '.data[] | "\(.attributes.stage): \(.attributes.status)"'
+          bad=$(echo "${stages}" | jq '[.data[] | select(.attributes.status | IN("failed","errored","unreachable","canceled"))] | length')
+
+          if [ "${status}" != "planned_and_finished" ] || [ "${bad}" != "0" ]; then
+            echo "::error::Gate reprovado (run=${status}, task stages com falha=${bad}). Detalhes: ${RUN_LINK}"
+            exit 1
+          fi
+          echo "Gate aprovado."
