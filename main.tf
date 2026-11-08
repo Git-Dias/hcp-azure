@@ -70,9 +70,6 @@ resource "azurerm_storage_account" "lab_storage" {
   # VIOLA: "Storage Account 'Secure transfer required' should be enabled"
   https_traffic_only_enabled = false
 
-  # NÃO VIOLÁVEL: "Storage Account should use TLS version 1.2 or higher"
-  # O Azure Storage aposentou TLS 1.0/1.1 e o azurerm 5.x só aceita min_tls_version = "TLS1_2".
-
   # VIOLA: "Storage Account's network rules should not allow public access"
   network_rules {
     default_action = "Allow"
