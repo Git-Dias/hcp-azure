@@ -10,3 +10,9 @@ variable "location" {
   default     = "eastus"
 }
 
+variable "vm_size" {
+  description = "Tamanho da VM e das instâncias do VMSS do lab"
+  type        = string
+  default     = "Standard_B1s"
+}
+
