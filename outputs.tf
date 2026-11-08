@@ -3,13 +3,26 @@ output "resource_group_name" {
 }
 
 output "vnet_id" {
-  value = azurerm_virtual_network.lab_vnet.id
+  value = one(module.network[*].vnet_id)
 }
 
 output "nic_public_ip" {
-  value = azurerm_public_ip.lab_pip.ip_address
+  description = "Só tem valor no cenário FAIL (nic_public_ip_enabled = true)"
+  value       = one(module.network[*].test_nic_public_ip)
 }
 
-output "public_container_url" {
-  value = "${azurerm_storage_account.lab_storage.primary_blob_endpoint}${azurerm_storage_container.lab_public_container.name}"
+output "storage_account_name" {
+  value = one(module.storage[*].name)
+}
+
+output "container_url" {
+  value = one(module.storage[*].container_url)
+}
+
+output "key_vault_uri" {
+  value = one(module.keyvault[*].vault_uri)
+}
+
+output "vm_private_ip" {
+  value = one(module.vm_linux[*].private_ip)
 }
