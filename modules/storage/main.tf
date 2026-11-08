@@ -6,7 +6,9 @@ resource "azurerm_storage_account" "this" {
   account_replication_type = "LRS"
   min_tls_version          = var.min_tls_version
 
-  public_network_access           = var.public_network_access_enabled ? "Enabled" : "Disabled"
+  # Atributo deprecated no azurerm 5.x (o novo é public_network_access = "Disabled"),
+  # mas é o que a regra do Wiz avalia. Não troque pelo novo ou o scan reporta "undefined".
+  public_network_access_enabled   = var.public_network_access_enabled
   allow_nested_items_to_be_public = var.allow_nested_items_to_be_public
   shared_access_key_enabled       = var.shared_access_key_enabled
   https_traffic_only_enabled      = var.https_traffic_only_enabled
