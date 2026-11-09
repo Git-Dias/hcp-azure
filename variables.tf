@@ -39,7 +39,7 @@ variable "enable_bot" {
 variable "enable_keyvault" {
   description = "Key Vault"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "enable_keyvault_objects" {

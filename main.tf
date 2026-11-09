@@ -77,9 +77,9 @@ module "keyvault" {
   create_key    = var.enable_keyvault_objects
   create_secret = var.enable_keyvault_objects
 
-  public_network_access_enabled = false  # FAIL: true    -> "Key Vault public network access should be disabled"
+  public_network_access_enabled = true  # FAIL: true    -> "Key Vault public network access should be disabled"
   network_default_action        = "Deny" # FAIL: "Allow" -> "Key Vault firewall should be enabled"
-  purge_protection_enabled      = true   # FAIL: false   -> "Key Vault purge protection should be enabled" (true -> false recria o KV)
+  purge_protection_enabled      = false   # FAIL: false   -> "Key Vault purge protection should be enabled" (true -> false recria o KV)
   soft_delete_retention_days    = 90     # FAIL: 7       -> "Key Vault soft delete retention" (Azure aceita só 7 a 90)
 
   key_expiration_date    = var.keyvault_object_expiration_date # FAIL: null -> "Key Vault key should have an expiration date"
