@@ -73,5 +73,5 @@ variable "enable_vmss" {
 variable "purge_protection" {
   description = "Proteção de exclusão do Key Vault"
   type        = bool
-  default     = false
+  default     = true
 }
