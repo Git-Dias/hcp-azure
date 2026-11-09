@@ -56,7 +56,7 @@ module "bot" {
   location            = azurerm_resource_group.hcp_tf_lab.location
   tenant_id           = data.azurerm_client_config.current.tenant_id
 
-  public_network_access_enabled = false # FAIL: true -> "Bot Service public network access should be disabled"
+  public_network_access_enabled = true # FAIL: true -> "Bot Service public network access should be disabled"
 }
 
 # --- Key Vault -------------------------------------------------------------
