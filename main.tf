@@ -37,8 +37,8 @@ module "storage" {
   location            = azurerm_resource_group.hcp_tf_lab.location
   name                = "sthcptflab001"
 
-  public_network_access_enabled   = false     # FAIL: true      -> "Storage Account public network access should be disabled"
-  shared_access_key_enabled       = false     # FAIL: true      -> "Storage Account should prevent shared key access"
+  public_network_access_enabled   = true     # FAIL: true      -> "Storage Account public network access should be disabled"
+  shared_access_key_enabled       = true     # FAIL: true      -> "Storage Account should prevent shared key access"
   https_traffic_only_enabled      = true      # FAIL: false     -> "Storage Account 'Secure transfer required' should be enabled"
   min_tls_version                 = "TLS1_2"  # FAIL: "TLS1_0"  -> "Storage Account should use minimum TLS 1.2"
   network_default_action          = "Deny"    # FAIL: "Allow"   -> "Storage Account's network rules should not allow public access"
