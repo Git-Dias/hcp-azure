@@ -34,12 +34,12 @@ module "storage" {
   location            = azurerm_resource_group.hcp_tf_lab.location
   name                = "sthcptflab001"
 
-  public_network_access_enabled   = true     # FAIL: true      -> "Storage Account public network access should be disabled"
-  shared_access_key_enabled       = true     # FAIL: true      -> "Storage Account should prevent shared key access"
-  https_traffic_only_enabled      = false      # FAIL: false     -> "Storage Account 'Secure transfer required' should be enabled"
-  min_tls_version                 = "TLS1_2"  # FAIL: "TLS1_0"  -> "Storage Account should use minimum TLS 1.2"
-  network_default_action          = "Allow"    # FAIL: "Allow"   -> "Storage Account's network rules should not allow public access"
-  allow_nested_items_to_be_public = true     # FAIL: true      -> pré-requisito do container público abaixo
+  public_network_access_enabled   = module.storage.public_network_access_enabled   # FAIL: true      -> "Storage Account public network access should be disabled"
+  shared_access_key_enabled       = module.storage.shared_access_key_enabled       # FAIL: true      -> "Storage Account should prevent shared key access"
+  https_traffic_only_enabled      = module.storage.https_traffic_only_enabled      # FAIL: false     -> "Storage Account 'Secure transfer required' should be enabled"
+  min_tls_version                 = module.storage.min_tls_version                 # FAIL: "TLS1_0"  -> "Storage Account should use minimum TLS 1.2"
+  network_default_action          = module.storage.network_default_action          # FAIL: "Allow"   -> "Storage Account's network rules should not allow public access"
+  allow_nested_items_to_be_public = module.storage.allow_nested_items_to_be_public # FAIL: true      -> pré-requisito do container público abaixo
   container_access_type           = "blob" # FAIL: "blob"    -> "Storage Account container should not allow public access" (exige a linha acima = true)
 }
 

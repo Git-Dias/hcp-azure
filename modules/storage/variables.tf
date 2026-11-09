@@ -24,17 +24,17 @@ variable "container_name" {
 # Defaults = conforme
 variable "public_network_access_enabled" {
   type    = bool
-  default = false
+  default = true
 }
 
 variable "allow_nested_items_to_be_public" {
   type    = bool
-  default = false
+  default = true
 }
 
 variable "shared_access_key_enabled" {
   type    = bool
-  default = false
+  default = true
 }
 
 variable "https_traffic_only_enabled" {
