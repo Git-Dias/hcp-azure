@@ -39,13 +39,13 @@ variable "enable_bot" {
 variable "enable_keyvault" {
   description = "Key Vault"
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "enable_keyvault_objects" {
   description = "Key e secret dentro do Key Vault"
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "enable_vm" {

@@ -37,8 +37,8 @@ module "storage" {
   location            = azurerm_resource_group.hcp_tf_lab.location
   name                = "sthcptflab001"
 
-  public_network_access_enabled   = false     # FAIL: true      -> "Storage Account public network access should be disabled"
-  shared_access_key_enabled       = false     # FAIL: true      -> "Storage Account should prevent shared key access"
+  public_network_access_enabled   = true     # FAIL: true      -> "Storage Account public network access should be disabled"
+  shared_access_key_enabled       = true     # FAIL: true      -> "Storage Account should prevent shared key access"
   https_traffic_only_enabled      = true      # FAIL: false     -> "Storage Account 'Secure transfer required' should be enabled"
   min_tls_version                 = "TLS1_2"  # FAIL: "TLS1_0"  -> "Storage Account should use minimum TLS 1.2"
   network_default_action          = "Deny"    # FAIL: "Allow"   -> "Storage Account's network rules should not allow public access"
@@ -56,7 +56,7 @@ module "bot" {
   location            = azurerm_resource_group.hcp_tf_lab.location
   tenant_id           = data.azurerm_client_config.current.tenant_id
 
-  public_network_access_enabled = false # FAIL: true -> "Bot Service public network access should be disabled"
+  public_network_access_enabled = true # FAIL: true -> "Bot Service public network access should be disabled"
 }
 
 # --- Key Vault -------------------------------------------------------------
@@ -97,9 +97,9 @@ module "vm_linux" {
   subnet_id           = one(module.network[*].subnet_id)
   size                = var.vm_size
 
-  disable_password_authentication = true              # FAIL: false          -> "Linux Virtual Machine password authentication should be disabled"
-  secure_boot_enabled             = true              # FAIL: false          -> "Virtual Machine Secure Boot should be enabled"
-  vtpm_enabled                    = true              # FAIL: false          -> "Virtual Machine vTPM should be enabled"
+  disable_password_authentication = false             # FAIL: false          -> "Linux Virtual Machine password authentication should be disabled"
+  secure_boot_enabled             = false              # FAIL: false          -> "Virtual Machine Secure Boot should be enabled"
+  vtpm_enabled                    = false              # FAIL: false          -> "Virtual Machine vTPM should be enabled"
   os_disk_storage_account_type    = "StandardSSD_LRS" # FAIL: "Standard_LRS" -> "Virtual Machine should be using Standard SSD disk volumes"
 }
 
