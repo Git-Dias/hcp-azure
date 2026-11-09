@@ -18,5 +18,4 @@ Merging into `homol` and opening a pull request into `main` don't start any runs
 
 Each service lives in its own module under `modules/` (`network`, `storage`, `bot`, `vm_linux`, `vmss_linux`). The Key Vault is the exception: it's declared directly in `main.tf` with literal values, so the IaC scanner can evaluate it without resolving module variables.
 
-- **What gets provisioned:** turn modules on or off with the `enable_*` flags in `lab.auto.tfvars`. The VM and the VMSS need `enable_network = true`.
 - **Pass or fail:** by default every resource is compliant. To make one fail a rule, change the value shown in the `# FAIL:` comment next to that line in `main.tf`.

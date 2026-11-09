@@ -1,6 +1,5 @@
 # ---------------------------------------------------------------------------
 # LAB DE TESTES DE CSPM/IaC
-# - Liga/desliga módulos em lab.auto.tfvars (enable_*).
 # - Por padrão TUDO está em conformidade (cenário PASS).
 # - Para gerar o FAIL, troque o valor indicado no comentário "FAIL:" da linha.
 # Não reutilize esta configuração em ambientes reais.
@@ -16,7 +15,6 @@ resource "azurerm_resource_group" "hcp_tf_lab" {
 # --- Rede ------------------------------------------------------------------
 
 module "network" {
-  count  = var.enable_network ? 1 : 0
   source = "./modules/network"
 
   resource_group_name = azurerm_resource_group.hcp_tf_lab.name
@@ -30,7 +28,6 @@ module "network" {
 # --- Storage ---------------------------------------------------------------
 
 module "storage" {
-  count  = var.enable_storage ? 1 : 0
   source = "./modules/storage"
 
   resource_group_name = azurerm_resource_group.hcp_tf_lab.name
@@ -49,7 +46,6 @@ module "storage" {
 # --- Bot Service -----------------------------------------------------------
 
 module "bot" {
-  count  = var.enable_bot ? 1 : 0
   source = "./modules/bot"
 
   resource_group_name = azurerm_resource_group.hcp_tf_lab.name
@@ -65,8 +61,6 @@ module "bot" {
 # (Wiz) conseguir avaliar cada atributo sem precisar resolver variáveis de módulo.
 
 resource "azurerm_key_vault" "lab_kv" {
-  count = var.enable_keyvault ? 1 : 0
-
   # Com purge protection, um KV destruído "segura" o nome pelos dias de retenção: troque o nome se precisar recriar.
   name                = "kv-hcp-tf-lab-001"
   location            = azurerm_resource_group.hcp_tf_lab.location
@@ -95,13 +89,11 @@ resource "azurerm_key_vault" "lab_kv" {
 }
 
 # Key e secret são criados pelo data plane: com o KV fechado (default_action = "Deny"), o apply a partir
-# do runner do HCP falha. Para um apply real: enable_keyvault_objects = false ou use um agent com acesso privado.
+# do runner do HCP falha. Para um apply real: remova key/secret ou use um agent com acesso privado.
 
 resource "azurerm_key_vault_key" "lab_key" {
-  count = var.enable_keyvault && var.enable_keyvault_objects ? 1 : 0
-
   name            = "key-tf-lab"
-  key_vault_id    = azurerm_key_vault.lab_kv[0].id
+  key_vault_id    = azurerm_key_vault.lab_kv.id
   key_type        = "RSA"
   key_size        = 2048
   key_opts        = ["encrypt", "decrypt", "sign", "verify", "wrapKey", "unwrapKey"]
@@ -109,10 +101,8 @@ resource "azurerm_key_vault_key" "lab_key" {
 }
 
 resource "azurerm_key_vault_secret" "lab_secret" {
-  count = var.enable_keyvault && var.enable_keyvault_objects ? 1 : 0
-
   name            = "secret-tf-lab"
-  key_vault_id    = azurerm_key_vault.lab_kv[0].id
+  key_vault_id    = azurerm_key_vault.lab_kv.id
   value           = "lab-not-a-real-secret"
   content_type    = "text/plain"
   expiration_date = "2027-11-01T00:00:00Z" # FAIL: apague a linha -> "Key Vault secret should have an expiration date"
@@ -121,12 +111,11 @@ resource "azurerm_key_vault_secret" "lab_secret" {
 # --- Compute ---------------------------------------------------------------
 
 module "vm_linux" {
-  count  = var.enable_vm ? 1 : 0
   source = "./modules/vm_linux"
 
   resource_group_name = azurerm_resource_group.hcp_tf_lab.name
   location            = azurerm_resource_group.hcp_tf_lab.location
-  subnet_id           = one(module.network[*].subnet_id)
+  subnet_id           = module.network.subnet_id
   size                = var.vm_size
 
   disable_password_authentication = false             # FAIL: false          -> "Linux Virtual Machine password authentication should be disabled"
@@ -136,12 +125,11 @@ module "vm_linux" {
 }
 
 module "vmss_linux" {
-  count  = var.enable_vmss ? 1 : 0
   source = "./modules/vmss_linux"
 
   resource_group_name = azurerm_resource_group.hcp_tf_lab.name
   location            = azurerm_resource_group.hcp_tf_lab.location
-  subnet_id           = one(module.network[*].subnet_id)
+  subnet_id           = module.network.subnet_id
   sku                 = var.vm_size
 
   disable_password_authentication = true              # FAIL: false          -> "Linux Virtual Machine password authentication should be disabled"
