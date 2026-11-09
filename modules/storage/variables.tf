@@ -32,10 +32,10 @@ variable "allow_nested_items_to_be_public" {
   default = true
 }
 
-variable "shared_access_key_enabled" {
-  type    = bool
-  default = true
-}
+# variable "shared_access_key_enabled" {
+#   type    = bool
+#   default = true
+# }
 
 variable "https_traffic_only_enabled" {
   type    = bool

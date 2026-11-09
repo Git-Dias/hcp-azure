@@ -10,7 +10,7 @@ resource "azurerm_storage_account" "this" {
   # mas é o que a regra do Wiz avalia. Não troque pelo novo ou o scan reporta "undefined".
   public_network_access_enabled   = var.public_network_access_enabled
   allow_nested_items_to_be_public = var.allow_nested_items_to_be_public
-  shared_access_key_enabled       = var.shared_access_key_enabled
+  shared_access_key_enabled       = true
   https_traffic_only_enabled      = var.https_traffic_only_enabled
 
   network_rules {
