@@ -78,7 +78,7 @@ resource "azurerm_key_vault" "lab_kv" {
   rbac_authorization_enabled = false
 
   public_network_access_enabled = true  # FAIL: true  -> "Key Vault public network access should be disabled"
-  purge_protection_enabled      = false # FAIL: false -> "Key Vault purge protection should be enabled" (true -> false recria o KV)
+  purge_protection_enabled      = var.purge_protection # FAIL: false -> "Key Vault purge protection should be enabled" (true -> false recria o KV)
   soft_delete_retention_days    = 90    # FAIL: 7     -> "Key Vault soft delete retention" (Azure aceita só 7 a 90)
 
   network_acls {

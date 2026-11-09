@@ -69,3 +69,9 @@ variable "enable_vmss" {
     error_message = "enable_vmss = true exige enable_network = true (o VMSS usa a subnet do módulo de rede)."
   }
 }
+
+variable "purge_protection" {
+  description = "Proteção de exclusão do Key Vault"
+  type        = bool
+  default     = false
+}
