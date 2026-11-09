@@ -69,9 +69,3 @@ variable "enable_vmss" {
     error_message = "enable_vmss = true exige enable_network = true (o VMSS usa a subnet do módulo de rede)."
   }
 }
-
-variable "keyvault_object_expiration_date" {
-  description = "Expiração (RFC3339) da key e do secret do Key Vault. null = sem expiração (FAIL)"
-  type        = string
-  default     = "2027-11-01T00:00:00Z"
-}

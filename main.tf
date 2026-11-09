@@ -61,29 +61,61 @@ module "bot" {
 
 # --- Key Vault -------------------------------------------------------------
 
-module "keyvault" {
-  count  = var.enable_keyvault ? 1 : 0
-  source = "./modules/keyvault"
+# Sem módulo de propósito: valores literais direto no recurso, para o scanner de IaC
+# (Wiz) conseguir avaliar cada atributo sem precisar resolver variáveis de módulo.
 
-  resource_group_name = azurerm_resource_group.hcp_tf_lab.name
-  location            = azurerm_resource_group.hcp_tf_lab.location
-  tenant_id           = data.azurerm_client_config.current.tenant_id
-  deployer_object_id  = data.azurerm_client_config.current.object_id
+resource "azurerm_key_vault" "lab_kv" {
+  count = var.enable_keyvault ? 1 : 0
+
   # Com purge protection, um KV destruído "segura" o nome pelos dias de retenção: troque o nome se precisar recriar.
-  name = "kv-hcp-tf-lab-001"
+  name                = "kv-hcp-tf-lab-001"
+  location            = azurerm_resource_group.hcp_tf_lab.location
+  resource_group_name = azurerm_resource_group.hcp_tf_lab.name
+  tenant_id           = data.azurerm_client_config.current.tenant_id
+  sku_name            = "standard"
 
-  # Key e secret são criados pelo data plane: com o KV fechado (padrão), o apply a partir
-  # do runner do HCP falha. Para um apply real: desligue-os aqui ou use um agent com acesso privado.
-  create_key    = var.enable_keyvault_objects
-  create_secret = var.enable_keyvault_objects
+  # Access policies (em vez de RBAC) para o próprio deployer criar key/secret sem role assignment
+  rbac_authorization_enabled = false
 
-  public_network_access_enabled = true  # FAIL: true    -> "Key Vault public network access should be disabled"
-  network_default_action        = "Deny" # FAIL: "Allow" -> "Key Vault firewall should be enabled"
-  purge_protection_enabled      = false   # FAIL: false   -> "Key Vault purge protection should be enabled" (true -> false recria o KV)
-  soft_delete_retention_days    = 90     # FAIL: 7       -> "Key Vault soft delete retention" (Azure aceita só 7 a 90)
+  public_network_access_enabled = true  # FAIL: true  -> "Key Vault public network access should be disabled"
+  purge_protection_enabled      = false # FAIL: false -> "Key Vault purge protection should be enabled" (true -> false recria o KV)
+  soft_delete_retention_days    = 90    # FAIL: 7     -> "Key Vault soft delete retention" (Azure aceita só 7 a 90)
 
-  key_expiration_date    = var.keyvault_object_expiration_date # FAIL: null -> "Key Vault key should have an expiration date"
-  secret_expiration_date = var.keyvault_object_expiration_date # FAIL: null -> "Key Vault secret should have an expiration date"
+  network_acls {
+    default_action = "Deny" # FAIL: "Allow" -> "Key Vault firewall should be enabled"
+    bypass         = "AzureServices"
+  }
+
+  access_policy {
+    tenant_id          = data.azurerm_client_config.current.tenant_id
+    object_id          = data.azurerm_client_config.current.object_id
+    key_permissions    = ["Get", "List", "Create", "Delete", "Purge", "Recover", "GetRotationPolicy"]
+    secret_permissions = ["Get", "List", "Set", "Delete", "Purge", "Recover"]
+  }
+}
+
+# Key e secret são criados pelo data plane: com o KV fechado (default_action = "Deny"), o apply a partir
+# do runner do HCP falha. Para um apply real: enable_keyvault_objects = false ou use um agent com acesso privado.
+
+resource "azurerm_key_vault_key" "lab_key" {
+  count = var.enable_keyvault && var.enable_keyvault_objects ? 1 : 0
+
+  name            = "key-tf-lab"
+  key_vault_id    = azurerm_key_vault.lab_kv[0].id
+  key_type        = "RSA"
+  key_size        = 2048
+  key_opts        = ["encrypt", "decrypt", "sign", "verify", "wrapKey", "unwrapKey"]
+  expiration_date = "2027-11-01T00:00:00Z" # FAIL: apague a linha -> "Key Vault key should have an expiration date"
+}
+
+resource "azurerm_key_vault_secret" "lab_secret" {
+  count = var.enable_keyvault && var.enable_keyvault_objects ? 1 : 0
+
+  name            = "secret-tf-lab"
+  key_vault_id    = azurerm_key_vault.lab_kv[0].id
+  value           = "lab-not-a-real-secret"
+  content_type    = "text/plain"
+  expiration_date = "2027-11-01T00:00:00Z" # FAIL: apague a linha -> "Key Vault secret should have an expiration date"
 }
 
 # --- Compute ---------------------------------------------------------------

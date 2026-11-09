@@ -20,7 +20,7 @@ output "container_url" {
 }
 
 output "key_vault_uri" {
-  value = one(module.keyvault[*].vault_uri)
+  value = one(azurerm_key_vault.lab_kv[*].vault_uri)
 }
 
 output "vm_private_ip" {
